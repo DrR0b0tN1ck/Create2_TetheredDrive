@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# 27 May 2015
-# updated 1 April 2020 for Python3
+
+# Version History
+# v1.0: Python2.7 -- 2015//05/27
+# v2.0: Update to Python3 -- 2020/04/01
+# v2.1: Stiffler (bare) modifications -- 2022/02/02
+# v2.0: Stiffler Quality of Life changes from CreateLib -- 2022/02/02
 
 ###########################################################################
 # Copyright (c) 2015-2020 iRobot Corporation#
@@ -50,24 +54,11 @@ except ImportError:
 
 connection = None
 
-TEXTWIDTH = 40 # window width, in characters
-TEXTHEIGHT = 16 # window height, in lines
+TEXTWIDTH = 100 # window width, in characters
+TEXTHEIGHT = 24 # window height, in lines
 
 VELOCITYCHANGE = 200
 ROTATIONCHANGE = 300
-helpText = """\
-Supported Keys:
-P\tPassive
-S\tSafe
-F\tFull
-C\tClean
-D\tDock
-R\tReset
-Space\tBeep
-Arrows\tMotion
-
-If nothing happens after you connect, try pressing 'P' and then 'S' to get into safe mode.
-"""
 
 class TetheredDriveApp(Tk):
     # static variables for keyboard callback -- I know, this is icky
@@ -76,6 +67,29 @@ class TetheredDriveApp(Tk):
     callbackKeyLeft = False
     callbackKeyRight = False
     callbackKeyLastDriveCommand = ''
+
+    # Mapping of the supported keys (User should modify this to reflect key callbacks)
+    supported_keys = {
+                        "P": "Passive",
+                        "S": "Safe",
+                        "F": "Full",
+                        "C": "Clean",
+                        "D": "Dock",
+                        "R": "Reset",
+                        "Space": "Beep",
+                        "Arrows": "Motion",
+                        "Escape": "Quick Shutdown",
+                     }
+
+    def help_text(self, key_dict):
+        """
+        Function that generates "help" based on the supplied Dictionary
+        """
+        ret_str = "Supported Keys:"
+        for key, value in key_dict.items():
+            ret_str += f"\n{key}\t{value}"
+        ret_str += "\n\nIf nothing happens after you connect, try pressing 'P' and then 'S' to get into safe mode.\n"
+        return ret_str
 
     def __init__(self):
         Tk.__init__(self)
@@ -98,18 +112,23 @@ class TetheredDriveApp(Tk):
         self.text.pack(side=LEFT, fill=BOTH, expand=True)
         self.scroll.pack(side=RIGHT, fill=Y)
 
-        self.text.insert(END, helpText)
+        self.text.insert(END, self.help_text(self.supported_keys))
 
         self.bind("<Key>", self.callbackKey)
         self.bind("<KeyRelease>", self.callbackKey)
 
-    # sendCommandASCII takes a string of whitespace-separated, ASCII-encoded base 10 values to send
     def sendCommandASCII(self, command):
+        """
+        Takes a string of whitespace-separated, ASCII-encoded base 10 values then encodes
+        them for transmission to the robot
+        """
         cmd = bytes([int(v) for v in command.split()])
         self.sendCommandRaw(cmd)
 
-    # sendCommandRaw takes a string interpreted as a byte array
     def sendCommandRaw(self, command):
+        """
+        Takes a string interpreted as a byte array and transmits it to the robot.
+        """
         global connection
 
         try:
@@ -130,9 +149,11 @@ class TetheredDriveApp(Tk):
         self.text.insert(END, '\n')
         self.text.see(END)
 
-    # getDecodedBytes returns a n-byte value decoded using a format string.
-    # Whether it blocks is based on how the connection was set up.
     def getDecodedBytes(self, n, fmt):
+        """
+        Returns a n-byte value decoded using a format string.
+        Whether it blocks is based on how the connection was set up.
+        """
         global connection
 
         try:
@@ -146,24 +167,34 @@ class TetheredDriveApp(Tk):
             print("Got unexpected data from serial port.")
             return None
 
-    # get8Unsigned returns an 8-bit unsigned value.
     def get8Unsigned(self):
+        """
+        Returns an 8-bit unsigned value.
+        """
         return self.getDecodedBytes(1, "B")
 
-    # get8Signed returns an 8-bit signed value.
     def get8Signed(self):
+        """
+        Returns an 8-bit signed value.
+        """
         return self.getDecodedBytes(1, "b")
 
-    # get16Unsigned returns a 16-bit unsigned value.
     def get16Unsigned(self):
+        """
+        Returns an 16-bit unsigned value.
+        """
         return self.getDecodedBytes(2, ">H")
 
-    # get16Signed returns a 16-bit signed value.
     def get16Signed(self):
+        """
+        Returns an 16-bit signed value.
+        """
         return self.getDecodedBytes(2, ">h")
 
-    # A handler for keyboard events. Feel free to add more!
     def callbackKey(self, event):
+        """
+        A handler for keyboard events. Feel free to add more!
+        """
         k = event.keysym.upper()
         motionChange = False
 
@@ -194,6 +225,8 @@ class TetheredDriveApp(Tk):
             elif k == 'RIGHT':
                 self.callbackKeyRight = True
                 motionChange = True
+            elif k == 'ESCAPE':
+                self.destroy()
             else:
                 print("not handled", repr(k))
         elif event.type == '3': # KeyRelease; need to figure out how to get constant
@@ -229,6 +262,11 @@ class TetheredDriveApp(Tk):
                 self.callbackKeyLastDriveCommand = cmd
 
     def onConnect(self):
+        """
+        Handle the Serial Port Connection:
+            + Determine if already connected.
+            + If not, list avaialbe options and attempt to establish connection
+        """
         global connection
 
         if connection is not None:
@@ -253,14 +291,21 @@ class TetheredDriveApp(Tk):
 
 
     def onHelp(self):
-        tkinter.messagebox.showinfo('Help', helpText)
+        """
+        Display help text
+        """
+        tkinter.messagebox.showinfo('Help', self.help_text(self.supported_keys))
 
     def onQuit(self):
+        """
+        Confirm whether the user wants to quit.
+        """
         if tkinter.messagebox.askyesno('Really?', 'Are you sure you want to quit?'):
             self.destroy()
 
     def getSerialPorts(self):
-        """Lists serial ports
+        """
+        Lists serial ports
         From http://stackoverflow.com/questions/12090503/listing-available-com-ports-with-python
 
         :raises EnvironmentError:
