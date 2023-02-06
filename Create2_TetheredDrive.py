@@ -5,7 +5,7 @@
 # v1.0: Python2.7 -- 2015//05/27
 # v2.0: Update to Python3 -- 2020/04/01
 # v2.1: Stiffler (bare) modifications -- 2022/02/02
-# v2.0: Stiffler Quality of Life changes from CreateLib -- 2022/02/02
+# v3.0: Stiffler Quality of Life changes from CreateLib -- 2022/02/02
 
 ###########################################################################
 # Copyright (c) 2015-2020 iRobot Corporation#
